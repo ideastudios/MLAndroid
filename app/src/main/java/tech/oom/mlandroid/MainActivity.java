@@ -26,7 +26,6 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.os.AsyncTask;
 import android.os.Bundle;
-
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
@@ -38,6 +37,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import org.datavec.image.loader.NativeImageLoader;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
+import org.deeplearning4j.nn.conf.Updater;
 import org.deeplearning4j.nn.conf.layers.DenseLayer;
 import org.deeplearning4j.nn.conf.layers.OutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
@@ -84,6 +84,74 @@ public class MainActivity extends AppCompatActivity {
         drawingView = new MainActivity.DrawingView(this);
         parent.addView(drawingView);
 
+        layer();
+//        iris();
+
+
+    }
+
+    private void layer() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                DenseLayer inputLayer = new DenseLayer.Builder()
+                        .nIn(2)
+                        .nOut(3)
+                        .name("Input")
+                        .build();
+                DenseLayer hiddenLayer = new DenseLayer.Builder()
+                        .nIn(3)
+                        .nOut(2)
+                        .name("Hidden")
+                        .build();
+                OutputLayer outputLayer = new OutputLayer.Builder()
+                        .nIn(2)
+                        .nOut(2)
+                        .name("Output")
+                        .build();
+
+
+
+                NeuralNetConfiguration.Builder nncBuilder = new NeuralNetConfiguration.Builder();
+                nncBuilder.updater(Updater.ADAM);
+                NeuralNetConfiguration.ListBuilder listBuilder = nncBuilder.list();
+                listBuilder.layer(0, inputLayer);
+                listBuilder.layer(1, hiddenLayer);
+                listBuilder.layer(2, outputLayer);
+
+                MultiLayerNetwork myNetwork = new MultiLayerNetwork(listBuilder.build());
+                myNetwork.init();
+
+                INDArray trainingInputs = Nd4j.zeros(4, inputLayer.getNIn());
+                INDArray trainingOutputs = Nd4j.zeros(4, outputLayer.getNOut());
+
+                // If 0,0 show 0
+                trainingInputs.putScalar(new int[]{0, 0}, 0);
+                trainingInputs.putScalar(new int[]{0, 1}, 0);
+                trainingOutputs.putScalar(new int[]{0, 0}, 0);
+// If 0,1 show 1
+                trainingInputs.putScalar(new int[]{1, 0}, 0);
+                trainingInputs.putScalar(new int[]{1, 1}, 1);
+                trainingOutputs.putScalar(new int[]{1, 0}, 1);
+// If 1,0 show 1
+                trainingInputs.putScalar(new int[]{2, 0}, 1);
+                trainingInputs.putScalar(new int[]{2, 1}, 0);
+                trainingOutputs.putScalar(new int[]{2, 0}, 1);
+// If 1,1 show 0
+                trainingInputs.putScalar(new int[]{3, 0}, 1);
+                trainingInputs.putScalar(new int[]{3, 1}, 1);
+                trainingOutputs.putScalar(new int[]{3, 0}, 0);
+
+                DataSet myData = new DataSet(trainingInputs, trainingOutputs);
+                for(int l=0; l<=1000; l++) {
+                    myNetwork.fit(myData);
+                }
+
+            }
+        }).start();
+    }
+
+    private void iris() {
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -276,8 +344,6 @@ public class MainActivity extends AppCompatActivity {
                 System.out.println("first=" + first + "second=" + second + "third=" + third);
             }
         }).start();
-
-
     }
 
     public String saveDrawing() {
